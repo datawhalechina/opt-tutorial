@@ -43,8 +43,16 @@ def build_model():
 
 def solve(solver_name="appsi_highs"):
     model = build_model()
-    result = pyo.SolverFactory(solver_name).solve(model)
-    if str(result.solver.termination_condition) != "optimal":
+    solver = pyo.SolverFactory(solver_name)
+    if not solver.available(exception_flag=False):
+        raise RuntimeError(
+            f"Pyomo backend {solver_name!r} is not available："
+            f"appsi_highs / highs 需要 pip install highspy；"
+            "名字写错时 Pyomo 不会报错，只会返回一个不可用的 UnknownSolver"
+        )
+    result = solver.solve(model)
+    if (result.solver.status != pyo.SolverStatus.ok
+            or str(result.solver.termination_condition) != "optimal"):
         raise RuntimeError(f"没有求到最优解，终止条件={result.solver.termination_condition}")
 
     return pyo.value(model.profit), {"A": pyo.value(model.A), "B": pyo.value(model.B)}
@@ -52,5 +60,5 @@ def solve(solver_name="appsi_highs"):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show("Pyomo + HiGHS", objective, solution)
+    show(f"Pyomo + {solver_name}", objective, solution)
     check(PROBLEM, objective)

@@ -29,11 +29,20 @@ def build_distance(coord):
 
 
 def print_routes(arcs_used, demand, capacity):
+    """把解里的边还原成路线。带防御：万一模型漏了子回路消除约束，这里报错而不是死循环。"""
     next_node = dict(arcs_used)
     for start in [j for (i, j) in arcs_used if i == 0]:
-        tour, cur = [0, start], start
-        while cur != 0:
+        tour, cur, visited = [0, start], start, {0, start}
+        while True:
+            if cur not in next_node:
+                raise RuntimeError(f"解的路线断在节点 {cur}，模型可能有误")
             cur = next_node[cur]
+            if cur == 0:                     # 回到配送中心，这条路线结束
+                tour.append(0)
+                break
+            if cur in visited:
+                raise RuntimeError(f"解中出现子回路（节点 {cur} 被重复访问），检查 MTZ 约束")
+            visited.add(cur)
             tour.append(cur)
         load = sum(demand[node] for node in tour[1:-1])
         print(f"    路线 {' -> '.join(map(str, tour))}，载重 {load}/{capacity}")
@@ -56,7 +65,10 @@ def solve():
     }
     u = {i: model.addVariable(lb=0, name=f"u{i}") for i in customers}
 
-    model.minimize(sum(dist[i, j] * x[i, j] for (i, j) in arcs))
+    # setObjective 只设目标，不会求解（minimize() 会立刻求解一次）
+    model.setObjective(
+        sum(dist[i, j] * x[i, j] for (i, j) in arcs), highspy.ObjSense.kMinimize
+    )
 
     for i in customers:
         model.addConstr(sum(x[i, j] for j in nodes if j != i) == 1, f"out_{i}")
@@ -83,6 +95,8 @@ def solve():
     if model.getModelStatus() != highspy.HighsModelStatus.kOptimal:
         raise RuntimeError(f"没有求到最优解，模型状态={model.getModelStatus()}")
 
+    if model.getModelStatus() != highspy.HighsModelStatus.kOptimal:
+        raise RuntimeError(f"没有求到最优解，模型状态={model.getModelStatus()}")
     used = [arc for arc in arcs if model.variableValue(x[arc]) > 0.5]
     print_routes(used, demand, capacity)
     return model.getObjectiveValue(), {f"x{i}_{j}": model.variableValue(x[i, j]) for (i, j) in used}

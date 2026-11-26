@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from docplex.mp.model import Model
+from docplex.util.status import JobSolveStatus
 
 from common.data import FACILITY
 from common.verify import check, show
@@ -55,7 +56,9 @@ def solve():
 
     solution = model.solve(log_output=False)
     if solution is None:
-        raise RuntimeError(f"没有求到最优解：{model.get_solve_status()}")
+        raise RuntimeError(f"没有找到可行解：{model.get_solve_status()}")
+    if model.get_solve_status() != JobSolveStatus.OPTIMAL_SOLUTION:
+        print(f"注意：未证明最优（{model.get_solve_status()}），以下为当前最好解")
 
     result = {f"y{i + 1}": solution.get_value(y[i]) for i in range(n_fac)}
     result.update(

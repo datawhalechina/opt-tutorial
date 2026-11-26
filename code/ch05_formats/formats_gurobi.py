@@ -2,10 +2,12 @@
 
 演示四件事：
 1. 把模型写成 .lp / .mps，再读回来求解（跨语言交换模型的标准做法）
-2. 把可行解写成 .mst，作为 MIP start 读回来（热启动）
+2. 把解写成 .sol / .mst，读回来当初始解（热启动）
 3. 模型不可行时导出 .ilp，用于排查冲突约束
-4. 注意：.sol 是遗留的"只写"格式，新版 Gurobi 不能用 read() 读回来，
-   要交换解请用 .mst 或 JSON 格式。
+4. 注意三个格式细节：
+   - gp.read() 只建模型，读不了解文件；读解要用 model.read()
+   - .mst 只保存整数变量的值，不含连续变量；完整解请用 .sol 或 .json
+   - .json 是"解的附加信息"，不是模型文件，也不能读回
 
 运行：python code/ch05_formats/formats_gurobi.py
 """
@@ -21,7 +23,6 @@ from gurobipy import GRB
 
 from common.data import KNAPSACK
 
-PROBLEM = "knapsack"
 OUT = pathlib.Path(__file__).resolve().parent / "output"
 
 
@@ -39,7 +40,7 @@ def build_knapsack():
     return model
 
 
-def solve():
+def main():
     OUT.mkdir(exist_ok=True)
 
     # 1. 写模型文件，再读回来
@@ -52,11 +53,15 @@ def solve():
     reloaded.Params.OutputFlag = 0
     reloaded.optimize()
 
-    # 2. 把解写成 MIP start 文件（.mst），供下次求解热启动
+    # 2. 写解文件：.sol 保存完整解，.mst 只保存整数变量（给 MIP 热启动用）
+    model.write(str(OUT / "knapsack.sol"))
     model.write(str(OUT / "knapsack.mst"))
+
+    # 读回解文件必须用 model.read()，gp.read() 只管模型
     warm = gp.read(str(OUT / "knapsack.lp"))
     warm.Params.OutputFlag = 0
-    warm.read(str(OUT / "knapsack.mst"))
+    warm.read(str(OUT / "knapsack.sol"))      # 作为 MIP start 导入
+    warm.optimize()
 
     # 3. 不可行模型 + IIS 排查
     bad = gp.Model("Infeasible")
@@ -73,14 +78,15 @@ def solve():
 
     print(f"写出模型：{OUT / 'knapsack.lp'}、{OUT / 'knapsack.mps'}")
     print(f"重读模型求得的解：{reloaded.ObjVal:.0f}（原模型 {model.ObjVal:.0f}）")
-    print(f"写出热启动文件：{OUT / 'knapsack.mst'}，读回后变量数 {warm.NumVars}")
+    print(f"写出解文件：{OUT / 'knapsack.sol'}（完整解）、{OUT / 'knapsack.mst'}（只含整数变量）")
+    print(f"用 .sol 热启动后求得：{warm.ObjVal:.0f}")
     print(f"不可行模型导出的冲突集：{OUT / 'conflict.ilp'}")
 
     return model.ObjVal, {v.VarName: v.X for v in model.getVars()}
 
 
 if __name__ == "__main__":
-    objective, solution = solve()
+    objective, solution = main()
     print(f"[Gurobi] 最优目标值 = {objective:.6g}")
     for key, value in solution.items():
         if abs(value) > 1e-9:

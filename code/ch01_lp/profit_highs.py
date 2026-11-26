@@ -30,8 +30,9 @@ def solve():
     a = model.addVariable(lb=0, name="A")
     b = model.addVariable(lb=0, name="B")
 
-    # 3. 目标函数：直接用 a、b 这些变量拼表达式
-    model.maximize(profit_a * a + profit_b * b)
+    # 3. 目标函数：setObjective 只设目标，不会求解
+    #    ⚠️ 不要用 maximize()/minimize()，它们会立刻求解一次（此时约束还没加完）
+    model.setObjective(profit_a * a + profit_b * b, highspy.ObjSense.kMaximize)
 
     # 4. 约束：表达式和常数比较即可，第二个参数是约束名
     model.addConstr(

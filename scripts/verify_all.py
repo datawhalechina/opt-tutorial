@@ -28,6 +28,8 @@ UNAVAILABLE_PATTERNS = (
     "license file",
     "no CPLEX runtime found",
     "Unable to open Gurobi license",
+    "Not Available",          # PuLP 后端不可用，如 "HiGHS: Not Available"
+    "is not available",       # Pyomo 后端不可用
 )
 
 # 例题 -> {求解器名: 脚本相对路径}

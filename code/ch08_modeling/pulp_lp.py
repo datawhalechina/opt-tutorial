@@ -20,7 +20,10 @@ PROBLEM = "lp_profit"
 
 def solve(backend=None):
     data = LP_PROFIT
-    backend = backend or pulp.HiGHS(msg=False)   # 换成 pulp.PULP_CBC_CMD(msg=False) 就是 CBC
+    # 默认用 HiGHS（需要 pip install highspy）；没装就退回 PuLP 内置的 CBC
+    if backend is None:
+        highs = pulp.HiGHS(msg=False)
+        backend = highs if highs.available() else pulp.PULP_CBC_CMD(msg=False)   # 换成 pulp.PULP_CBC_CMD(msg=False) 就是 CBC
 
     model = pulp.LpProblem("Maximize_Profit", pulp.LpMaximize)
     a = pulp.LpVariable("A", lowBound=0)
@@ -45,5 +48,5 @@ def solve(backend=None):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show("PuLP + HiGHS", objective, solution)
+    show(f"PuLP + {type(backend).__name__}", objective, solution)
     check(PROBLEM, objective)

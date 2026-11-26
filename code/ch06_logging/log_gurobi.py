@@ -1,7 +1,7 @@
 """第六章 日志解读 —— 生成 Gurobi 的 LP 与 MIP 求解日志。
 
 同时把日志打印到屏幕和写入文件 output/log_gurobi_lp.log / log_gurobi_mip.log，
-方便对照第五章（原文第六章）的解读。
+方便对照日志解读那一章。
 运行：python code/ch06_logging/log_gurobi.py
 """
 
@@ -27,8 +27,14 @@ def solve_lp():
     a = model.addVar(lb=0, name="A")
     b = model.addVar(lb=0, name="B")
     model.setObjective(data["profit"][0] * a + data["profit"][1] * b, GRB.MAXIMIZE)
-    model.addConstr(2 * a + 4 * b <= 100, name="Production_Time")
-    model.addConstr(3 * a + b <= 50, name="Raw_Material")
+    model.addConstr(
+        data["time_per_unit"][0] * a + data["time_per_unit"][1] * b <= data["time_limit"],
+        name="Production_Time",
+    )
+    model.addConstr(
+        data["material_per_unit"][0] * a + data["material_per_unit"][1] * b <= data["material_limit"],
+        name="Raw_Material",
+    )
     model.optimize()
     return model.ObjVal
 

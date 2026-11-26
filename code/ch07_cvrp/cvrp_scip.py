@@ -29,11 +29,20 @@ def build_distance(coord):
 
 
 def print_routes(arcs_used, demand, capacity):
+    """把解里的边还原成路线。带防御：万一模型漏了子回路消除约束，这里报错而不是死循环。"""
     next_node = dict(arcs_used)
     for start in [j for (i, j) in arcs_used if i == 0]:
-        tour, cur = [0, start], start
-        while cur != 0:
+        tour, cur, visited = [0, start], start, {0, start}
+        while True:
+            if cur not in next_node:
+                raise RuntimeError(f"解的路线断在节点 {cur}，模型可能有误")
             cur = next_node[cur]
+            if cur == 0:                     # 回到配送中心，这条路线结束
+                tour.append(0)
+                break
+            if cur in visited:
+                raise RuntimeError(f"解中出现子回路（节点 {cur} 被重复访问），检查 MTZ 约束")
+            visited.add(cur)
             tour.append(cur)
         load = sum(demand[node] for node in tour[1:-1])
         print(f"    路线 {' -> '.join(map(str, tour))}，载重 {load}/{capacity}")

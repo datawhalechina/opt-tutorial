@@ -64,8 +64,12 @@ def solve():
         )
 
     model.optimize()
+    # 先看有没有解（SolCount>0），再看是否证明了最优：
+    # 到时限/解数上限等状态依然有可用解，不该当失败处理
+    if model.SolCount == 0:
+        raise RuntimeError(f"没有找到可行解，模型状态 Status={model.Status}")
     if model.Status != GRB.OPTIMAL:
-        raise RuntimeError(f"没有求到最优解，模型状态 Status={model.Status}")
+        print(f"注意：未证明最优（Status={model.Status}），以下为当前最好解")
 
     solution = {f"y{i + 1}": y[i].X for i in range(n_mach)}
     solution.update({f"p{i + 1}{k + 1}": p[i, k].X for i in range(n_mach) for k in range(n_prod)})

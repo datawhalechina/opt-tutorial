@@ -40,9 +40,11 @@ def solve():
         for k in range(n_prod)
     }
 
-    model.minimize(
+    # setObjective 只设目标，不会求解（minimize() 会立刻求解一次）
+    model.setObjective(
         sum(data["fixed_cost"][i] * y[i] for i in range(n_mach))
-        + sum(data["cost"][i][k] * p[i, k] for i in range(n_mach) for k in range(n_prod))
+        + sum(data["cost"][i][k] * p[i, k] for i in range(n_mach) for k in range(n_prod)),
+        highspy.ObjSense.kMinimize,
     )
 
     for k in range(n_prod):

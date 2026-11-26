@@ -21,7 +21,10 @@ def solve(backend=None):
     data = FACILITY
     n_fac, n_cus = len(data["fixed_cost"]), len(data["demand"])
     big_m = sum(data["demand"])
-    backend = backend or pulp.HiGHS(msg=False)
+    # 默认用 HiGHS（需要 pip install highspy）；没装就退回 PuLP 内置的 CBC
+    if backend is None:
+        highs = pulp.HiGHS(msg=False)
+        backend = highs if highs.available() else pulp.PULP_CBC_CMD(msg=False)
 
     model = pulp.LpProblem("FacilityLocation", pulp.LpMinimize)
 
@@ -52,5 +55,5 @@ def solve(backend=None):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show("PuLP + HiGHS", objective, solution)
+    show(f"PuLP + {type(backend).__name__}", objective, solution)
     check(PROBLEM, objective)

@@ -40,13 +40,15 @@ def solve():
         for j in range(n_cus)
     }
 
-    model.minimize(
+    # setObjective 只设目标，不会求解（minimize() 会立刻求解一次）
+    model.setObjective(
         sum(data["fixed_cost"][i] * y[i] for i in range(n_fac))
         + sum(
             data["transport_cost"][i][j] * x[i, j]
             for i in range(n_fac)
             for j in range(n_cus)
-        )
+        ),
+        highspy.ObjSense.kMinimize,
     )
 
     for j in range(n_cus):

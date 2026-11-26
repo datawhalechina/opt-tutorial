@@ -28,11 +28,7 @@ def solve():
     # 0-1 变量 = 下界 0、上界 1 的整数变量
     x = [
         model.addVariable(
-            lb=0,
-            ub=1,
-            obj=data["value"][i],
-            type=highspy.HighsVarType.kInteger,
-            name=f"x{i + 1}",
+            lb=0, ub=1, type=highspy.HighsVarType.kInteger, name=f"x{i + 1}"
         )
         for i in range(n)
     ]
@@ -40,8 +36,10 @@ def solve():
     model.addConstr(
         sum(data["weight"][i] * x[i] for i in range(n)) <= data["capacity"], "Capacity"
     )
-    # 目标系数在 addVariable 时已经通过 obj= 给好了，这里再声明求解方向即可
-    model.maximize(sum(data["value"][i] * x[i] for i in range(n)))
+    # setObjective 只设目标（会覆盖变量上的 obj= 系数），不会触发求解
+    model.setObjective(
+        sum(data["value"][i] * x[i] for i in range(n)), highspy.ObjSense.kMaximize
+    )
 
     model.run()
     if model.getModelStatus() != highspy.HighsModelStatus.kOptimal:

@@ -23,6 +23,7 @@ def solve_lp():
     env = cp.Envr()
     model = env.createModel("LP_log")
     model.setParam("Logging", 1)
+    (OUT / "log_copt_lp.log").unlink(missing_ok=True)   # setLogFile 是追加写，先清掉旧文件
     model.setLogFile(str(OUT / "log_copt_lp.log"))
     a = model.addVar(lb=0, name="A")
     b = model.addVar(lb=0, name="B")
@@ -40,6 +41,7 @@ def solve_mip():
     env = cp.Envr()
     model = env.createModel("MIP_log")
     model.setParam("Logging", 1)
+    (OUT / "log_copt_mip.log").unlink(missing_ok=True)
     model.setLogFile(str(OUT / "log_copt_mip.log"))
     y = model.addVars(n_fac, vtype=COPT.BINARY, nameprefix="y")
     x = model.addVars(n_fac, n_cus, lb=0, vtype=COPT.CONTINUOUS, nameprefix="x")

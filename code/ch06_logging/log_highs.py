@@ -23,10 +23,13 @@ def solve_lp():
     model.setOptionValue("output_flag", True)
     a = model.addVariable(lb=0, name="A")
     b = model.addVariable(lb=0, name="B")
-    model.maximize(data["profit"][0] * a + data["profit"][1] * b)
+    # 用 setObjective 而不是 maximize()：后者会立刻求解一次，日志里会多一段空模型
+    model.setObjective(
+        data["profit"][0] * a + data["profit"][1] * b, highspy.ObjSense.kMaximize
+    )
     model.addConstr(2 * a + 4 * b <= 100, "Production_Time")
     model.addConstr(3 * a + b <= 50, "Raw_Material")
-    # ⚠️ log_file 要在模型建完后再设，否则 HiGHS 会先记录一段空模型的求解日志
+    (OUT / "log_highs_lp.log").unlink(missing_ok=True)   # log_file 是追加写
     model.setOptionValue("log_file", str(OUT / "log_highs_lp.log"))
     model.run()
     return model.getObjectiveValue()
@@ -47,18 +50,20 @@ def solve_mip():
         for i in range(n_fac)
         for j in range(n_cus)
     }
-    model.minimize(
+    model.setObjective(
         sum(data["fixed_cost"][i] * y[i] for i in range(n_fac))
         + sum(
             data["transport_cost"][i][j] * x[i, j]
             for i in range(n_fac)
             for j in range(n_cus)
-        )
+        ),
+        highspy.ObjSense.kMinimize,
     )
     for j in range(n_cus):
         model.addConstr(sum(x[i, j] for i in range(n_fac)) == data["demand"][j], f"demand{j + 1}")
     for i in range(n_fac):
         model.addConstr(sum(x[i, j] for j in range(n_cus)) <= big_m * y[i], f"open_link{i + 1}")
+    (OUT / "log_highs_mip.log").unlink(missing_ok=True)
     model.setOptionValue("log_file", str(OUT / "log_highs_mip.log"))
     model.run()
     return model.getObjectiveValue()

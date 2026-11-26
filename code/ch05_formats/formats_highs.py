@@ -33,7 +33,10 @@ def build_knapsack():
     model.addConstr(
         sum(data["weight"][i] * x[i] for i in range(n)) <= data["capacity"], "Capacity"
     )
-    model.maximize(sum(data["value"][i] * x[i] for i in range(n)))
+    # setObjective 只设目标，不会求解（maximize() 会立刻求解一次）
+    model.setObjective(
+        sum(data["value"][i] * x[i] for i in range(n)), highspy.ObjSense.kMaximize
+    )
     return model
 
 
@@ -47,7 +50,9 @@ def main():
 
     reloaded = highspy.Highs()
     reloaded.setOptionValue("output_flag", False)
-    reloaded.readModel(str(OUT / "knapsack_highs.mps"))
+    status = reloaded.readModel(str(OUT / "knapsack_highs.mps"))
+    if status != highspy.HighsStatus.kOk:
+        raise RuntimeError(f"读模型失败：{status}")
     reloaded.run()
 
     model.writeSolution(str(OUT / "knapsack_highs.sol"), 0)
