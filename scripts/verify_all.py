@@ -8,7 +8,9 @@
 退出码：0 全部通过；1 有例题失败或有求解器缺失导致该例题无任一可运行实现。
 """
 
+import contextlib
 import importlib.util
+import io
 import pathlib
 import sys
 import traceback
@@ -75,6 +77,17 @@ CASES = {
 }
 
 
+# 这些脚本只演示"写文件 / 生成日志"，不产出最优值，冒烟跑通即可
+SMOKE = {
+    "ch05_formats/Gurobi": "code/ch05_formats/formats_gurobi.py",
+    "ch05_formats/COPT": "code/ch05_formats/formats_copt.py",
+    "ch05_formats/HiGHS": "code/ch05_formats/formats_highs.py",
+    "ch06_logging/Gurobi": "code/ch06_logging/log_gurobi.py",
+    "ch06_logging/COPT": "code/ch06_logging/log_copt.py",
+    "ch06_logging/HiGHS": "code/ch06_logging/log_highs.py",
+}
+
+
 def load(path, alias):
     spec = importlib.util.spec_from_file_location(alias, ROOT / path)
     module = importlib.util.module_from_spec(spec)
@@ -91,8 +104,10 @@ def run_case(name, path, verbose):
     except Exception as exc:                        # 语法错误、导入期报错
         return "fail", f"导入失败：{type(exc).__name__}: {exc}"
 
+    buffer = io.StringIO()
     try:
-        objective, _ = module.solve()
+        with contextlib.redirect_stdout(buffer):
+            objective, _ = module.solve()
     except SystemExit:
         return "skip", "求解器不可用"
     except Exception as exc:
@@ -103,10 +118,39 @@ def run_case(name, path, verbose):
             return "skip", f"未授权 / 无运行时（{detail}）"
         return "fail", f"运行失败：{detail}"
 
+    if verbose:
+        print(buffer.getvalue())
+
     expected = EXPECTED.get(name.replace("(建模层)", ""))
     if expected is not None and abs(objective - expected) > TOL:
         return "fail", f"{objective:.6g} ≠ 标准答案 {expected:.6g}"
     return "ok", f"{objective:.6g}"
+
+
+def run_smoke(path, verbose):
+    """只要求脚本能跑完，不校验最优值。"""
+    try:
+        module = load(path, f"smoke_{abs(hash(path))}")
+    except ImportError as exc:
+        return "skip", f"未安装（{exc.name}）"
+    except Exception as exc:
+        return "fail", f"导入失败：{type(exc).__name__}: {exc}"
+
+    entry = getattr(module, "main", None) or getattr(module, "solve", None)
+    buffer = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buffer):
+            entry()
+    except Exception as exc:
+        if verbose:
+            traceback.print_exc()
+        detail = f"{type(exc).__name__}: {str(exc)[:90]}"
+        if any(p in str(exc) for p in UNAVAILABLE_PATTERNS):
+            return "skip", f"未授权 / 无运行时（{detail}）"
+        return "fail", f"运行失败：{detail}"
+    if verbose:
+        print(buffer.getvalue())
+    return "ok", "跑通"
 
 
 def main():
@@ -116,6 +160,7 @@ def main():
 
     failures = 0
     results = {}          # (例题, 求解器) -> (状态, 说明)
+    smoke_results = {}
     print(f"{'例题':<18}{'求解器':<10}{'结果':<8}说明")
     print("-" * 78)
     for name, solvers in CASES.items():
@@ -135,6 +180,19 @@ def main():
             print(f"  ⚠️ {name} 没有任何可运行的求解器实现")
             failures += 1
         print("-" * 78)
+
+    if not keyword or "formats" in keyword or "logging" in keyword:
+        print("\n—— 冒烟测试（只要求跑通）——")
+        smoke_results = {}
+        for name, path in SMOKE.items():
+            if keyword and keyword not in name:
+                continue
+            status, detail = run_smoke(path, verbose)
+            smoke_results[name] = (status, detail)
+            mark = {"ok": "通过", "skip": "跳过", "fail": "失败"}[status]
+            print(f"{name:<18}{'':<10}{mark:<8}{detail}")
+            if status == "fail":
+                failures += 1
 
     # 汇总矩阵：行是例题，列是求解器
     solvers_all = sorted({s for _, s in results})

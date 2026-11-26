@@ -62,6 +62,10 @@ def solve_mip():
     return model.objval
 
 
-if __name__ == "__main__":
+def main():
     OUT.mkdir(exist_ok=True)
     print(f"LP 最优值 {solve_lp():.0f}，MIP 最优值 {solve_mip():.0f}")
+
+
+if __name__ == "__main__":
+    main()
