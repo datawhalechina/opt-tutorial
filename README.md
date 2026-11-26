@@ -94,7 +94,7 @@ python code/ch07_cvrp/cvrp_copt.py
 | CPLEX / docplex | docplex 2.32 | 建模语法与 LP 导出已核对；求解需 CPLEX 运行时 |
 | HiGHS | 1.16.0 | ✅ 实跑 |
 | SCIP | SCIP 10.0 / PySCIPOpt 6.3.0 | ✅ 实跑 |
-| PuLP | 3.3.1 | ✅ 实跑（CBC / HiGHS / COPT 三个后端） |
+| PuLP | 3.3.1（`requirements.txt` 限定 `<4`，4.x 是重写版不兼容） | ✅ 实跑（CBC / HiGHS / COPT 三个后端） |
 | Pyomo | 6.10.1 | ✅ 实跑（appsi_highs 后端） |
 
 求解器 API 变化很快——HiGHS 的 Python 接口换过一代、PuLP 4.0 要改变量构造方式（详见[第 9 章](docs/09-常见错误与排查.md)）。遇到行为不一致，先跑 `scripts/verify_all.py`。

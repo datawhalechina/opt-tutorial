@@ -1,7 +1,7 @@
 # ---- 开源求解器与建模层：无需许可证，CI 只跑这几个 ----
 highspy>=1.16          # HiGHS 官方 Python 接口（addVariable 代数式 API、getIis 需要 1.16+）
 pyscipopt>=5.0         # SCIP 官方 Python 接口（开源，SCIP 8.0.3 起 Apache 2.0）
-pulp>=3.0,<4           # 建模层；4.0 会改掉 LpVariable 的构造方式，暂限定 3.x
+pulp>=3.0,<4           # 建模层；4.x 是重写版（LpVariable/LpStatus/CBC 全变了），本仓库按 3.x
 pyomo>=6.7             # 建模层，后端通过 SolverFactory 切换
 
 # ---- 商用求解器：按需安装，装完还要各自授权 ----
