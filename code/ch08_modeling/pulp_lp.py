@@ -1,6 +1,7 @@
 """第八章 建模层 —— 用 PuLP 建模，后端可选（CBC / HiGHS / COPT / ...）。
 
 同一份模型代码，只改 solve() 里的后端参数，就能换求解器。
+默认优先 HiGHS（需 pip install highspy），没装就自动退回 PuLP 内置的 CBC。
 运行：python code/ch08_modeling/pulp_lp.py
 """
 
@@ -48,5 +49,5 @@ def solve(backend=None):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show(f"PuLP + {type(backend).__name__}", objective, solution)
+    show("PuLP", objective, solution)
     check(PROBLEM, objective)

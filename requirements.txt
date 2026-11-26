@@ -1,12 +1,12 @@
 # ---- 开源求解器与建模层：无需许可证，CI 只跑这几个 ----
-highspy>=1.11          # HiGHS 官方 Python 接口（开源求解器）
-pyscipopt>=5.0         # SCIP 官方 Python 接口（开源求解器）
-pulp>=3.0              # 建模层，后端可切换 CBC / HiGHS / COPT
+highspy>=1.16          # HiGHS 官方 Python 接口（addVariable 代数式 API、getIis 需要 1.16+）
+pyscipopt>=5.0         # SCIP 官方 Python 接口（开源，SCIP 8.0.3 起 Apache 2.0）
+pulp>=3.0,<4           # 建模层；4.0 会改掉 LpVariable 的构造方式，暂限定 3.x
 pyomo>=6.7             # 建模层，后端通过 SolverFactory 切换
 
 # ---- 商用求解器：按需安装，装完还要各自授权 ----
 # gurobipy>=12         # pip install gurobipy 后还需 grbgetkey 取许可证
 # coptpy>=7            # COPT，自带受限试用许可证
-# docplex>=2.25        # CPLEX 的 Python 建模接口，求解需要本机 CPLEX 运行时
+# docplex>=2.25        # CPLEX 的 Python 建模接口；求解/导出 MPS/读模型都需要 CPLEX 运行时
 #
 # 本仓库实际验证过的版本见 README「版本与验证」一节。

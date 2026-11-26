@@ -60,5 +60,5 @@ def solve(solver_name="appsi_highs"):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show(f"Pyomo + {solver_name}", objective, solution)
+    show("Pyomo", objective, solution)
     check(PROBLEM, objective)

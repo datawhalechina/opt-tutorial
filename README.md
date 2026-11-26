@@ -10,9 +10,9 @@
 
 OptTutorial 是一个面向初学者的**多求解器**优化建模教程：同一道例题，用 **Gurobi、COPT、CPLEX、HiGHS、SCIP** 各写一遍，再对比它们在建模、求解、日志、文件格式上的差异。
 
-和一般教程的区别只有一条：**每一段代码都真跑过，且跨求解器互相校验。**
+和一般教程的区别只有一条：**同一道例题的多个求解器实现会互相校验最优值**——能跑通的环境里都真跑过；Gurobi 和 CPLEX 需要各自的许可证，这两套代码是对照官方文档与 type stub 逐条核对的（见下方「版本与验证」）。
 
-- 5 个求解器：Gurobi、COPT、CPLEX（docplex）、HiGHS、SCIP（后两个开源免费）
+- 5 个求解器：Gurobi、COPT、CPLEX（docplex）、HiGHS、SCIP（后两个开源，SCIP 自 8.0.3 起 Apache 2.0）
 - 7 道例题：线性规划、0-1 背包、设施选址、半连续生产、文件读写、日志解读、车辆路径
 - 外加建模层 PuLP / Pyomo：模型写一次，后端随便换
 - 一键校验：`python scripts/verify_all.py` 把所有能跑的求解器跑一遍，**比对最优目标值是否一致**
@@ -24,10 +24,11 @@ python scripts/verify_all.py
 
 ```
 汇总（✓ 通过 / - 跳过 / ✗ 失败）
-例题               COPT  CPLEX  Gurobi  HiGHS  PuLP  Pyomo  SCIP
-lp_profit          ✓     -      -       ✓      ·     ·      ✓
-knapsack           ✓     -      -       ✓      ·     ·      ✓
-facility           ✓     -      -       ✓      ·     ·      ✓
+例题                  COPT     CPLEX    Gurobi   HiGHS    PuLP     Pyomo    SCIP
+lp_profit           ✓        -        -        ✓        ·        ·        ✓
+...
+facility(建模层)       ·        ·        ·        ·        ✓        ✓        ·
+
 全部通过 ✅
 ```
 
@@ -88,15 +89,15 @@ python code/ch07_cvrp/cvrp_copt.py
 
 | 求解器 | 验证版本 | 本仓库是否实跑 |
 | :--- | :--- | :--- |
-| Gurobi | 14.0 | API 按官方 type stub 逐条核对；求解需 license |
+| Gurobi | 14.0 | API 按官方文档与 type stub 逐条核对；求解需许可证 |
 | COPT | 8.0.1 | ✅ 实跑 |
 | CPLEX / docplex | docplex 2.32 | 建模语法与 LP 导出已核对；求解需 CPLEX 运行时 |
 | HiGHS | 1.16.0 | ✅ 实跑 |
-| SCIP | 6.3.0 | ✅ 实跑 |
+| SCIP | SCIP 10.0 / PySCIPOpt 6.3.0 | ✅ 实跑 |
 | PuLP | 3.3.1 | ✅ 实跑（CBC / HiGHS / COPT 三个后端） |
 | Pyomo | 6.10.1 | ✅ 实跑（appsi_highs 后端） |
 
-求解器 API 变化很快（本仓库就因此修过一批老代码，见[第 9 章](docs/09-常见错误与排查.md)）。遇到行为不一致，先跑 `scripts/verify_all.py`。
+求解器 API 变化很快——HiGHS 的 Python 接口换过一代、PuLP 4.0 要改变量构造方式（详见[第 9 章](docs/09-常见错误与排查.md)）。遇到行为不一致，先跑 `scripts/verify_all.py`。
 
 ## 官方文档
 

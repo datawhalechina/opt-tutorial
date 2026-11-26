@@ -1,5 +1,6 @@
 """第八章 建模层 —— 用 PuLP 建混合整数模型（设施选址）。
 
+默认优先 HiGHS（需 pip install highspy），没装就自动退回 PuLP 内置的 CBC。
 运行：python code/ch08_modeling/pulp_milp.py
 """
 
@@ -55,5 +56,5 @@ def solve(backend=None):
 
 if __name__ == "__main__":
     objective, solution = solve()
-    show(f"PuLP + {type(backend).__name__}", objective, solution)
+    show("PuLP", objective, solution)
     check(PROBLEM, objective)
