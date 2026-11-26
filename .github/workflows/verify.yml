@@ -1,0 +1,31 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 安装开源求解器与建模层
+        run: |
+          python -m pip install --upgrade pip
+          pip install highspy pyscipopt pulp pyomo
+
+      - name: 校验所有例题的最优值是否一致
+        run: python scripts/verify_all.py
