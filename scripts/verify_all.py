@@ -87,6 +87,16 @@ SMOKE = {
     "ch06_logging/Gurobi": "code/ch06_logging/log_gurobi.py",
     "ch06_logging/COPT": "code/ch06_logging/log_copt.py",
     "ch06_logging/HiGHS": "code/ch06_logging/log_highs.py",
+    "ch10_infeasible/COPT": "code/ch10_infeasible/iis_copt.py",
+    "ch10_infeasible/COPT-relax": "code/ch10_infeasible/feasrelax_copt.py",
+    "ch10_infeasible/Gurobi": "code/ch10_infeasible/feasrelax_gurobi.py",
+    "ch10_infeasible/HiGHS": "code/ch10_infeasible/iis_highs.py",
+    "ch10_infeasible/SCIP": "code/ch10_infeasible/iis_scip.py",
+    "ch11_callback/COPT": "code/ch11_callback/rootrelax_copt.py",
+    "ch11_callback/COPT-lazy": "code/ch11_callback/lazycuts_copt.py",
+    "ch11_callback/Gurobi": "code/ch11_callback/rootrelax_gurobi.py",
+    "ch11_callback/HiGHS": "code/ch11_callback/rootrelax_highs.py",
+    "ch11_callback/SCIP": "code/ch11_callback/rootrelax_scip.py",
 }
 
 
@@ -183,7 +193,7 @@ def main():
             failures += 1
         print("-" * 78)
 
-    if not keyword or "formats" in keyword or "logging" in keyword:
+    if not keyword or any(k in keyword for k in ("formats", "logging", "infeasible", "callback")):
         print("\n—— 冒烟测试（只要求跑通）——")
         smoke_results = {}
         for name, path in SMOKE.items():
