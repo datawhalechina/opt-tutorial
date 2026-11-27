@@ -35,8 +35,9 @@ def solve():
     # 3. 目标函数
     model.setObjective(profit_a * a + profit_b * b, sense=COPT.MAXIMIZE)
 
-    # 4. 约束：⚠️ COPT 的 addConstr 第 2 个位置参数是 sense，不是 name，
-    #    名字必须写成 name=...，否则名字会被静默丢弃（写成 R0、R1）。
+    # 4. 约束：⚠️ COPT 的 addConstr 第 2 个位置参数是 sense（约束关系符，
+    #    只在 addConstr(lhs, sense, rhs) 三段式里用），不是 name。
+    #    所以名字必须写成 name=...，否则会被静默丢弃（自动命名成 R0、R1）。
     model.addConstr(
         data["time_per_unit"][0] * a + data["time_per_unit"][1] * b <= data["time_limit"],
         name="Production_Time",

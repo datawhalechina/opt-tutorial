@@ -35,7 +35,7 @@ def solve():
     )
     model.addConstr(
         cp.quicksum(data["weight"][i] * x[i] for i in range(n)) <= data["capacity"],
-        name="Capacity",      # ⚠️ COPT 必须写 name=，第 2 个位置参数是 sense
+        name="Capacity",      # ⚠️ COPT 必须写 name=：第 2 个位置参数是 sense（约束关系符），不是名字
     )
 
     model.solve()
