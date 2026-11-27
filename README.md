@@ -1,12 +1,10 @@
 # 优化求解器入门手册
 
-[![python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![license](https://img.shields.io/badge/license-MIT%20%2F%20CC%20BY--NC--SA%204.0-green)](LICENSE)
-[![solvers](https://img.shields.io/badge/solvers-5%20%28Gurobi%20%C2%B7%20COPT%20%C2%B7%20CPLEX%20%C2%B7%20HiGHS%20%C2%B7%20SCIP%29-orange)](docs/00-环境准备.md)
+[![python 3.10+](.github/badges/python.svg)](https://www.python.org/)
+[![license: MIT / CC BY-NC-SA 4.0](.github/badges/license.svg)](LICENSE)
+[![solvers: 商用 3 / 开源 2](.github/badges/solvers.svg)](docs/00-环境准备.md)
 
-<!-- CI 通过后可以把下面这行加回来（需先把 .github/workflows/verify.yml 推到默认分支并跑过一次）：
-[![verify](https://img.shields.io/github/actions/workflow/status/datawhalechina/opt-tutorial/verify.yml?branch=main&label=verify)](https://github.com/datawhalechina/opt-tutorial/actions/workflows/verify.yml)
--->
+[查看 CI 校验结果](https://github.com/datawhalechina/opt-tutorial/actions/workflows/verify.yml)（每次 push 自动跑 HiGHS / SCIP / PuLP / Pyomo）
 
 OptTutorial 是一个面向初学者的**多求解器**优化建模教程：同一道例题，用 **Gurobi、COPT、CPLEX、HiGHS、SCIP** 各写一遍，再对比它们在建模、求解、日志、文件格式上的差异。
 
@@ -56,7 +54,15 @@ facility(建模层)       ·        ·        ·        ·        ✓        ✓
 | [第 8 章 建模层 PuLP 与 Pyomo](docs/08-建模层.md) | 模型写一次，后端一行切换 |
 | [第 9 章 常见错误与排查](docs/09-常见错误与排查.md) | 参数位置、已废弃 API、格式误解、状态码语义 |
 
-**推荐路径**：0 → 1 → 2 → 3 打基础；要落地再看 4、5、6；做路径/调度类问题看 7；多求解器协作看 8；出 bug 先翻 9。
+**专题**
+
+| 章节 | 内容 |
+| :--- | :--- |
+| [第 10 章 不可行模型排查](docs/10-不可行模型排查.md) | IIS 找冲突集、可行性松弛（feasRelax / 弹性模型）、建模自查清单 |
+| [第 11 章 回调函数](docs/11-回调函数.md) | 取 MIP 根 LP 松弛解、懒约束把"错误的正确答案"改对 |
+| [第 12 章 一阶方法与 GPU 加速](docs/12-GPU加速与PDLP.md) | PDLP / PDHG 原理、CPU 实测对比、各家 GPU 支持现状 |
+
+**推荐路径**：0 → 1 → 2 → 3 打基础；要落地再看 4、5、6；做路径/调度类问题看 7；多求解器协作看 8；出 bug 先翻 9；求解慢/无解/要干预求解过程看 10~12。
 
 ## 代码结构
 
@@ -72,7 +78,10 @@ code/
 ├── ch05_formats/            # 文件读写：formats_{gurobi,copt,highs}.py
 ├── ch06_logging/            # 日志生成：log_{gurobi,copt,highs}.py
 ├── ch07_cvrp/               # 车辆路径：cvrp_{gurobi,copt,highs,scip}.py
-└── ch08_modeling/           # 建模层：pulp_{lp,milp}.py、pyomo_{lp,milp}.py
+├── ch08_modeling/           # 建模层：pulp_{lp,milp}.py、pyomo_{lp,milp}.py
+├── ch10_infeasible/         # 不可行排查：iis_{copt,highs,scip}.py、feasrelax_{copt,highs,gurobi,varbounds}.py
+├── ch11_callback/           # 回调：rootrelax_{copt,highs,scip,gurobi}.py、lazycuts_{copt,gurobi}.py
+└── ch12_gpu/                # 一阶方法：bench_pdlp_highs.py、gen_lp.py、pdlp_{copt,gurobi,cupdlp}.py
 scripts/verify_all.py        # 一键校验
 ```
 
