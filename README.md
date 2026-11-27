@@ -1,12 +1,10 @@
 # 优化求解器入门手册
 
-[![python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![license](https://img.shields.io/badge/license-MIT%20%2F%20CC%20BY--NC--SA%204.0-green)](LICENSE)
-[![solvers](https://img.shields.io/badge/solvers-5%20%28Gurobi%20%C2%B7%20COPT%20%C2%B7%20CPLEX%20%C2%B7%20HiGHS%20%C2%B7%20SCIP%29-orange)](docs/00-环境准备.md)
+[![python 3.10+](.github/badges/python.svg)](https://www.python.org/)
+[![license: MIT / CC BY-NC-SA 4.0](.github/badges/license.svg)](LICENSE)
+[![solvers: 商用 3 / 开源 2](.github/badges/solvers.svg)](docs/00-环境准备.md)
 
-<!-- CI 通过后可以把下面这行加回来（需先把 .github/workflows/verify.yml 推到默认分支并跑过一次）：
-[![verify](https://img.shields.io/github/actions/workflow/status/datawhalechina/opt-tutorial/verify.yml?branch=main&label=verify)](https://github.com/datawhalechina/opt-tutorial/actions/workflows/verify.yml)
--->
+[查看 CI 校验结果](https://github.com/datawhalechina/opt-tutorial/actions/workflows/verify.yml)（每次 push 自动跑 HiGHS / SCIP / PuLP / Pyomo）
 
 OptTutorial 是一个面向初学者的**多求解器**优化建模教程：同一道例题，用 **Gurobi、COPT、CPLEX、HiGHS、SCIP** 各写一遍，再对比它们在建模、求解、日志、文件格式上的差异。
 
