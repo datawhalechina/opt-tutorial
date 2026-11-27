@@ -21,10 +21,14 @@ COIN-OR onboarding 版路径（2026-10 起，产出在 .coinor-deps/ 下）：
 
     MODE=gpu bash build.sh
 
-前提按官方 README/INSTALL 原文：C/C++ 编译器、CMake >= 3.24、zlib、Python 3 + NumPy；
-"Bundled HiGHS 1.6.0 is built automatically"（内置的 HiGHS 1.6.0 自动构建，不是要你自己装
-1.6.0；只有给了 HIGHS_HOME 才改用外部 HiGHS）。CUDA Toolkit 只在 GPU 模式下需要，
-VALIDATION.md 记录的实测配置是 CUDA Toolkit 12.8.93 + RTX 4090（driver 580.82.07）。
+前提按官方 README/INSTALL 原文：C/C++ 编译器、CMake >= 3.24、zlib、Python 3 + NumPy。
+HiGHS 有两条路，别混：
+  - COIN-OR 打包版（上面的 build.sh）："Bundled HiGHS 1.6.0 is built automatically"，
+    内置的 1.6.0 自动构建，不用你自己装；
+  - 上游 v0.4.x（CMake 直接构建）：README 要求先装好 HiGHS 并
+    `export HIGHS_HOME=/path-to-highs`，否则 configure 失败（FindHiGHSConf.cmake 读它）。
+CUDA Toolkit 只在 GPU 模式下需要。VALIDATION.md 记录的实测配置是
+CUDA Toolkit 12.8.93 + RTX 4090（driver 580.82.07）。
 
 要点：`-DBUILD_CUDA=ON` 默认是 **OFF**，也就是不加这个开关编出来的是 CPU 版。
 官方论文（arXiv:2312.14832）里 GPU 实验用的是 NVIDIA H100 80GB。

@@ -12,7 +12,7 @@
 
 实测环境：HiGHS 1.16.0（pip wheel）、COPT 8.0.1、gurobipy 14.0.0、Python 3.12.7、Apple M2 / 8 核 / macOS 13.4。
 
-注意版本，不然第一屏就会翻车：**`gurobipy` 要 12 以上才有 PDHG**（11.0.1 里 `GRB.Param.PDHGGPU` 直接不存在，`gurobipy._paramdetails` 这个模块也没有）；本章用的 `pdlp_*` 选项是在 `highspy` 1.16.0 上逐个实测过的，更老的 wheel 未必有。`python -c "import highspy, gurobipy"` 先过一遍再往下看。
+注意版本，不然第一屏就会翻车：**`gurobipy` 要 12 以上才有 PDHG**（本机 `/usr/local/bin/python3`（3.9.12）里装的是 gurobipy 11.0.1，`GRB.Param.PDHGGPU` 直接不存在，`gurobipy._paramdetails` 这个模块也没有）；本章用的 `pdlp_*` 选项是在 `highspy` 1.16.0 上逐个实测过的，更老的 wheel 未必有。`python -c "import highspy, gurobipy"` 先过一遍再往下看。
 
 ## 12.1 为什么需要一阶方法
 
@@ -51,6 +51,7 @@ $$
 \end{aligned}
 $$
 
+- 这里写的是**等式形式** $A\mathbf x = \mathbf b$，目的是把公式讲清楚；本章 12.3 的实例是 $A\mathbf x \ge \mathbf b$，实现里对偶更新要在外层套一次 $\max(0,\cdot)$ 投影（cuPDLP-C 对 $Gx\ge h$ 那一组对偶变量就是这么做的）；
 - $\tau,\sigma$ 是原始/对偶步长，要满足 $\tau\sigma\lVert\mathbf{A}\rVert^2 < 1$ 才保证收敛；
 - $2\mathbf{x}^{k+1}-\mathbf{x}^{k}$ 是外推（extrapolation）；
 - 每轮只有**两次矩阵-向量乘**和若干 $O(n)$ 的向量运算，没有分解、没有基、没有 fill-in。
@@ -135,7 +136,7 @@ $$
 
 **2）"单次迭代代价"这一列才是 PDLP 的本钱。** 看 nnz 从 96k 涨到 240k（2.5 倍）：PDLP 单次迭代从 0.18 ms 涨到 0.52 ms（2.9 倍，和 nnz 的增长同量级，符合"只做矩阵-向量乘"）；内点法单次迭代从 0.20 s 涨到 3.2 s（16 倍，典型的分解 fill-in 超线性增长）。**两者单次迭代差 3 个数量级以上**（3.2 s vs 0.52 ms，约 6 000 倍），PDLP 靠多迭代几千次也追回来了。
 
-**3）交叉点在 nnz 十万量级。** 本机上：
+**3）交叉点在 nnz 两万到十万之间。** 本机只采了 18k 和 96k 两个点，100k 附近没细扫；本机数据：
 
 | 规模 | PDLP / ipm 耗时比 | 谁快 |
 | :--- | ---: | :--- |
@@ -144,9 +145,9 @@ $$
 | large（96k） | 0.36× | **PDLP 快 2.8 倍** |
 | xlarge（240k） | 0.052× | **PDLP 快 19.4 倍** |
 
-**4）单纯形在这个测试例上最早垮掉，但这不能推广。** large 上单纯形迭代 32 708 次、74.0 s；xlarge 上 120 s 还没证到最优，解差 5.6%。原因是这批随机稀疏 LP 的退化很严重，单纯形的退化处理（bland/perturbation）代价被放大。**真实模型里单纯形往往比这好得多**——它是商用求解器的默认算法不是没有原因。这里只说明一件事：规模上去以后，单纯形的迭代次数 × 单次迭代代价会一起变大。
+**4）单纯形在这个测试例上最早垮掉，但这不能推广。** large 上单纯形迭代 32 708 次、74.0 s；xlarge 上 120 s 还没证到最优，解差 5.6%。一个可能的原因是这批随机稀疏 LP 的退化比较严重，单纯形的退化处理（bland/perturbation）代价被放大——本章**没有测退化度**，这只是推测。**真实模型里单纯形往往比这好得多**——它是商用求解器的默认算法不是没有原因。这里只说明一件事：规模上去以后，单纯形的迭代次数 × 单次迭代代价会一起变大。
 
-**5）PDLP 解的精度不是"最优"级别。** 四行的相对偏差都在 1e-09 ~ 1e-11，看着不错，但这是**目标值**的偏差；可行性是另一回事，见下面那段真实日志。而内点法/单纯形给的是 1e-14 量级（xlarge 的 simplex 除外，它压根没解完）。
+**5）PDLP 解的精度不是"最优"级别。** 四行的相对偏差在 1e-11 ~ 5e-09（large 那行是 4.8e-09），看着不错，但这是**目标值**的偏差；可行性是另一回事，见下面那段真实日志。而内点法/单纯形给的是 1e-14 量级（xlarge 的 simplex 除外，它压根没解完）。
 
 **6）PDLP 没有基。** 表里最后一列 `basis_validity` 是 HiGHS 的 `HighsInfo.basis_validity`，单纯形和内点法都是 1，PDLP 全是 0。想拿基（做灵敏度分析、给 MIP 热启动）必须额外跑一次 crossover。
 
@@ -222,7 +223,7 @@ HiGHS 官方对这件事的建议（GPU 文档原文）：
 | `LpMethod=1`（对偶单纯形） | — | 0.777 s | 0 |
 | `LpMethod=6` + `GPUMode=0`（PDLP，CPU） | 4 240 | 0.160 s | 1.4e-15 |
 
-同一台机器、同一个模型：COPT 的 PDLP 比它自己的对偶单纯形快约 4.9 倍（nnz=18 000，和 HiGHS 的 0.134 s / 0.338 s 是同一量级）。注意这里 PDLP 的偏差是 1.4e-15，因为 **COPT 的 PDLP 默认跑完会做 crossover**（日志里的 `Experimental: using crossover to find a basic solution after PDLP`），拿回了一个真正的基。想要"纯一阶"的解就把 `Crossover` 设 0，代价是没有基、精度只能到 `PDLPTol`（默认 1e-6）那个级别。
+同一台机器、同一个模型：COPT 的 PDLP 比它自己的对偶单纯形快约 4.9 倍（nnz=18 000，和 HiGHS 的 0.134 s / 0.338 s 是同一量级）。**这个倍数不稳定**：PDLP 侧每次都是 0.16 s 上下，单纯形侧的 wall clock 在 0.78~1.6 s 之间抖（倍数就变成 5~10 倍），以你自己的重跑为准。注意这里 PDLP 的偏差是 1.4e-15，因为 **COPT 的 PDLP 默认跑完会做 crossover**（日志里的 `Experimental: using crossover to find a basic solution after PDLP`），拿回了一个真正的基。想要"纯一阶"的解就把 `Crossover` 设 0，代价是没有基、精度只能到 `PDLPTol`（默认 1e-6）那个级别。
 
 这两家的数字口径不完全一样（预处理、默认容差、是否 crossover 都不同），**不要横向比较"谁的 PDLP 更强"**，只用来确认一件事：CPU 上 PDLP 的收益在这个规模就已经能被测出来。
 
@@ -232,15 +233,15 @@ HiGHS 官方对这件事的建议（GPU 文档原文）：
 
 | 求解器 | 一阶方法开关 | GPU 开关 | GPU 前提 | 本机情况 |
 | :--- | :--- | :--- | :--- | :--- |
-| Gurobi 14 | `Method=6`（`GRB.METHOD_PDHG`） | `PDHGGPU=1` | 需**单独下载 GPU 版**；Compute Server / Instant Cloud 上不可用 | 参数名已用 `_paramdetails.py` 核实（gurobipy 14.0.0；11.0.1 里这些参数**根本不存在**）；⚠️ 未实跑（无 GPU，且许可证已过期） |
+| Gurobi 14 | `Method=6`（`GRB.METHOD_PDHG`） | `PDHGGPU=1` | 需**单独下载 GPU 版**；Compute Server / Instant Cloud 上不可用 | 参数名已用 `_paramdetails.py` 核实（gurobipy 14.0.0；本机 `/usr/local/bin/python3` 的 11.0.1 里这些参数**根本不存在**）；⚠️ 未实跑（无 GPU，且许可证已过期） |
 | COPT 8 | `LpMethod=6` | `GPUMode=1`（`GPUDevice` 选卡） | Windows / Linux + CUDA；**macOS 只有 CPU 版** | CPU PDLP 已实跑；⚠️ GPU 未实跑 |
 | HiGHS 1.16 | `solver="pdlp"`（内部是 cuPDLP-C；另有 `hipdlp`） | 编译期决定：`-DCUPDLP_GPU=ON` / `-DHIPDLP_HIP=ON` | 本地 CMake 编译 + CUDA（或 ROCm） | CPU 已实跑（pip wheel 是 CPU 版）；⚠️ GPU 未实跑 |
-| cuPDLP-C | 它本身就是一阶求解器 | `-DBUILD_CUDA=ON`（上游 CMake）/ `MODE=gpu bash build.sh`（COIN-OR 版） | C/C++ 编译器 + CMake ≥ 3.24 + zlib + Python 3 + NumPy；CUDA Toolkit 只有 GPU 模式才要；HiGHS 由它内置自动构建 | ⚠️ 未实跑 |
+| cuPDLP-C | 它本身就是一阶求解器 | `-DBUILD_CUDA=ON`（上游 CMake）/ `MODE=gpu bash build.sh`（COIN-OR 版） | C/C++ 编译器 + CMake ≥ 3.24 + zlib + Python 3 + NumPy；CUDA Toolkit 只有 GPU 模式才要。HiGHS：**COIN-OR 版内置 1.6.0 自动构建；上游 v0.4.x 必须先 `export HIGHS_HOME=/path-to-highs`**（见下方 cuPDLP-C 小节） | ⚠️ 未实跑 |
 | OR-Tools PDLP | 内置 | CPU | — | 未实跑（不是本章重点） |
 
 ### Gurobi：PDHG + `PDHGGPU`
 
-Gurobi 把一阶方法叫 **PDHG**（不是 PDLP），开关是 `Method=6`。用 `gurobipy` 自带的参数表（`python code/ch12_gpu/pdlp_gurobi.py --check-params`，不需要许可证）可以逐字验证，下面是节选（实际输出一行一个参数，还会带上完整描述）：
+Gurobi 把一阶方法叫 **PDHG**（不是 PDLP），开关是 `Method=6`。用 `gurobipy` 自带的参数表（`python code/ch12_gpu/pdlp_gurobi.py --check-params`，不需要许可证）可以逐条验证。下面是**节选并合并了若干行**——脚本的真实输出是一行一个参数（`Method` 的 8 个取值会占 8 行）、还带完整描述，想看原样就跑那条命令：
 
 ```
 Method  type=int default=-1 range=[-1, 7]
@@ -273,7 +274,7 @@ PDHGMIPHeurTime / PDHGMIPHeurWork / PDHGMIPHeurSolutions
 `code/ch12_gpu/pdlp_gurobi.py` 里的写法（⚠️ 本机未实跑）：
 
 ```python
-model = gp.read("medium.mps")
+model = gp.read("code/ch12_gpu/output/medium.mps")   # 先跑 bench_pdlp_highs.py 生成
 model.Params.Method = gp.GRB.METHOD_PDHG     # 6，这一行不能少
 model.Params.PDHGGPU = 1                     # 1=GPU, 0=强制 CPU
 model.Params.PDHGEarlyCrossover = 2.0        # 提前开 crossover，尽早拿基
@@ -314,7 +315,7 @@ model.setParam("GPUDevice", 0)   # 多卡时选卡（单设它不会打开 GPU�
   >
   > 2: For the barrier method, attempt to use the high-performance GPU mode when solving LP problems, which may lead to higher memory usage. For the first-order method (PDLP), this is equivalent to GPUMode=1 (standard GPU mode).
 
-  也就是说 `-1` 和 `0` 在实际效果上是"CPU"（除非是 Compute Server 带卡之类的情形），`1` 才是"试着用 GPU"，`2` 对 PDLP 与 `1` 等价。**这四个取值本机能设上（`getParam` 复核一致），但本机没有 GPU，跑起来一样是 CPU——取值语义是官方文档给的，不是本机验出来的。**
+  注意 `-1` 的官方语义是"自动"，而对 PDLP 是 **默认就尝试用 GPU**（barrier 才默认 CPU）。本机之所以看到 `-1` 和 `0` 的日志一模一样，是因为 macOS 上根本没有 GPU 版可走——**这是平台短路，不是 `-1` 的语义**。想确定性地强制 CPU 必须显式写 `GPUMode=0`。**这四个取值本机能设上（`getParam` 复核一致），但本机没有 GPU，跑起来一样是 CPU——取值语义来自官方文档，不是本机验出来的。**
 - 适用范围：官方明说 COPT 的 GPU 求解器支持 **LP 和 MILP 的根松弛**，且只有 PDLP 或 barrier 两种方法能用 GPU。
 
 还有第四个参数在官方文档里有、**本机 8.0.1 里没有**，所以正文不把它当可用写法（详见 12.4 末尾的"待确认"）：`ConcurrentLpMode`，只在 `LpMethod=4`（并发）时生效，作用是把"GPU 上的 PDLP / barrier"当成并发求解器里的一个参赛选手。官方原文与取值见那张表，**别照抄代码**——`setParam` 会直接抛 `Invalid parameter name`。
@@ -327,7 +328,7 @@ macOS 的情况官方也写得明明白白（原文）：
 
 | 设置 | 日志 | 结论 |
 | :--- | :--- | :--- |
-| `LpMethod=6`，只设 `GPUDevice=1` | `Starting PDLP solver using CPU` | **设了设备号也不会触发 GPU，且没有任何提示** |
+| `LpMethod=6`，只设 `GPUDevice=1`（手工 `setParam` 探针，脚本里没有这个开关） | `Starting PDLP solver using CPU` | **设了设备号也不会触发 GPU，且没有任何提示** |
 | `LpMethod=6` + `GPUMode=1` | `GPU mode is not supported` → `Starting PDLP solver using CPU` | 至少告诉你"不支持" |
 
 所以**验证"到底跑没跑 GPU"的唯一可靠办法是看启动日志**，不要看参数设成什么。这一段属于"本机实跑"（跑的是 CPU 退化路径），GPU 路径 ⚠️ 未实跑。
@@ -343,7 +344,7 @@ HiGHS 自己的一阶求解器叫 HiPDLP，同时从 1.10 起把 **cuPDLP-C** �
 - **pip 装下来的 wheel 是 CPU 版**，`solver="pdlp"` 改不了这一点（本机 wheel 里 `strings | grep -ci cuda` 结果是 0，日志也确认是 CPU）；
 - 想要 GPU，得本地 CMake 编译，Linux / Windows + CUDA Toolkit（或 AMD 的 ROCm）；
 - 反过来的坑也在同一段文档里：**GPU 版编进去以后 HiPDLP 不能退回 CPU**——原文 `Conversely, on a GPU build, HiPDLP cannot fall back to the CPU: if no GPU is available at run time, the solve returns with an error.` 也就是说"编了 GPU 版但没有卡"不是静默变慢，是直接报错。
-- 还有一个选项名字很像 GPU 开关：`pdlp_cupdlpc_restart_method`（源码 `HighsOptions.h` 原文 `Restart mode for cuPDLP-C solver: 0 => none; 1 => GPU (default); 2 => CPU`，默认 1）。**它是"重启策略在哪个设备上跑"，不是"求解跑在哪"**，别拿它当加速开关——本机默认值就是 1，跑的依然是 CPU。
+- 还有一个选项名字很像 GPU 开关：`pdlp_cupdlpc_restart_method`（源码 `HighsOptions.h` 原文 `Restart mode for cuPDLP-C solver: 0 => none; 1 => GPU (default); 2 => CPU`，默认 1）。按取值名字推断，它管的是**重启那一步算在哪个设备上**（原文只给了 0/1/2 三个名字，没写解释），不是"整个求解跑在哪"。别拿它当加速开关——本机默认值就是 1，跑的依然是 CPU。
 
 #### 怎么一眼分出跑的是 HiPDLP 还是 cuPDLP-C
 
@@ -381,7 +382,7 @@ HiPDLP only supports pdlp_step_size_strategy in {0: fixed, 3: PID}; using PID fo
 | 迭代表头 | `Primal.Obj / Dual.Obj / Gap / Primal.Inf / Dual.Inf` | `primal obj / dual obj / pinf / dinf / gap / pr wt`（多一列 `pr wt`，即原始权重） |
 | 参数生效情况 | 吃 `pdlp_restart_strategy`、`pdlp_step_size_strategy` 全部取值 | 只做 Halpern 重启、**忽略** `pdlp_restart_strategy`；步长只支持 `0: fixed` 和 `3: PID`，其余值会被强制成 PID |
 
-同一道 small 实例：cuPDLP-C 迭代 2 520 次拿到最优，HiPDLP 迭代 3 680 次、目标值相对差 3.5e-09，两者 `basis_validity` 都是 0。**所以本章表里 `pdlp` 那一列是 cuPDLP-C 的数，不是 HiPDLP 的数**——想复现 HiPDLP 的数字得自己把 `solver` 换成 `"hipdlp"`。
+同一道 small 实例：cuPDLP-C 迭代 2 520 次拿到最优，HiPDLP 迭代 3 680 次、目标值相对 cuPDLP-C 差 3.5e-09（相对单纯形参考解是 2.1e-09），两者 `basis_validity` 都是 0。**所以本章表里 `pdlp` 那一列是 cuPDLP-C 的数，不是 HiPDLP 的数**——想复现 HiPDLP 的数字得自己把 `solver` 换成 `"hipdlp"`。
 
 ⚠️ HiGHS 的 GPU 分支**本机未实跑**（无 NVIDIA GPU，也没有本地编译的 CUDA 版）。
 
@@ -395,7 +396,8 @@ HiPDLP only supports pdlp_step_size_strategy in {0: fixed, 3: PID}; using PID fo
 
 两点值得停一下：
 
-- 那个 **HiGHS 1.6.0 是 cuPDLP-C 自己内置（bundled）的**，跟着它一起自动编译——不是"你要先去装一个 1.6.0"。它跟你本机 pip 装的 HiGHS 1.16 是两个不相干的库。要换成外部 HiGHS 才需要 `export HIGHS_HOME=...`，官方原文：`Bundled HiGHS is built/installed automatically unless HIGHS_HOME is supplied.`
+- 那个 **HiGHS 1.6.0 是 cuPDLP-C 自己内置（bundled）的**，跟着它一起自动编译——不是"你要先去装一个 1.6.0"。它跟你本机 pip 装的 HiGHS 1.16 是两个不相干的库。官方原文：`Bundled HiGHS is built/installed automatically unless HIGHS_HOME is supplied.`
+- ⚠️ **两份分发的要求不一样**，别混：上面那句"内置自动构建"是 **COIN-OR 打包版**（`MODE=gpu bash build.sh` 那条路）的行为；**上游 `v0.4.x` 的 README 要求你先自己装好 HiGHS 并导出 `export HIGHS_HOME=/path-to-highs`**（它的 `FindHiGHSConf.cmake` 直接读这个环境变量）。照上游的命令抄却没设 `HIGHS_HOME`，configure 会失败。
 - **CUDA 没有官方最低版本号**，只要求"CUDA Toolkit + 匹配的 NVIDIA 驱动"。仓库 `VALIDATION.md` 记录的实际实测配置是 `NVIDIA RTX 4090, driver 580.82.07, CUDA Toolkit 12.8.93, architecture 89`——这是"验证过的版本"，不是"要求的版本"。
 
 上游 CMake 直接编（老 README，`plc` 这个 target 就是这条路；`code/ch12_gpu/pdlp_cupdlp.py` 打印的也是这套）：
@@ -474,14 +476,14 @@ m.getParam("<参数名>")          # 再读回来：会不会被夹到区间端�
 | COPT `PDLPPrimalTol` / `PDLPDualTol` | 官方容差表里只有 `PDLPTol`（默认 1e-6，区间 1e-12 ~ 1e-4） | 两个名字都能设上，`getParam` 也读得回 | 名字存在但**没有官方语义**，别依赖；调精度只认 `PDLPTol` |
 | COPT `GPUMode=2` 对 PDLP | 原文："For the first-order method (PDLP), this is equivalent to GPUMode=1 (standard GPU mode)." | 能设上，但本机无 GPU，分不出 1 和 2 | 语义采信官方，未实测 |
 | HiGHS `pdlp_cupdlpc_restart_method` | 源码 `HighsOptions.h` 原文：`Restart mode for cuPDLP-C solver: 0 => none; 1 => GPU (default); 2 => CPU` | 默认 1；设 0/1/2 都行，设 3 被夹回 1 | 只在**已经编进 GPU 后端**的 build 里才有意义；CPU build 上它照样是 1，别当开关 |
-| Gurobi `PDHGGPU` 真能跑 GPU | 官方参数页原文见上 | 无 NVIDIA GPU。另外本机有两个 gurobipy：Python 3.12.7 环境里是 14.0.0（参数表有，逐字打印过），系统 Python 3.9 里是 **11.0.1，连 `GRB.Param.PDHGGPU` 都不存在、`gurobipy._paramdetails` 模块也没有** | 参数语义可信（14.0.0 的参数表逐字打印），**能不能跑 GPU 未实测**；顺带提醒：gurobipy < 12 连 PDHG 都没有 |
+| Gurobi `PDHGGPU` 真能跑 GPU | 官方参数页原文见上 | 无 NVIDIA GPU。另外本机有两个 gurobipy：`/opt/homebrew/var/tmp/.venv_opt/bin/python`（3.12.7）里是 14.0.0（参数表有，逐字打印过），`/usr/local/bin/python3`（3.9.12）里是 **11.0.1，连 `GRB.Param.PDHGGPU` 都不存在、`gurobipy._paramdetails` 模块也没有** | 参数语义可信（14.0.0 的参数表逐字打印），**能不能跑 GPU 未实测**；顺带提醒：gurobipy < 12 连 PDHG 都没有 |
 | 任何 GPU 加速比 | gpu.md 只说"GPU 只对大 LP 划得来"，不给数字 | 本机无 NVIDIA GPU | 本章不给任何未实测的倍数 |
 
 ## 12.5 要不要上 GPU：一份判断清单
 
 按顺序问自己，任何一条答"是"就先去解决问题，而不是先买卡。
 
-**1）模型有多大？** 粗略门槛：nnz 低于 $10^5$，本机的 CPU 实测显示 PDLP 还没到占优的区间；nnz 到 $10^6\sim10^7$ 才是一阶方法的主场。显存估算：CSC 存储每个非零约 `int32 索引 + double 值 = 12 B`，$10^8$ 个非零就是 1.2 GB——还要留出向量和多份副本的空间。
+**1）模型有多大？** 粗略门槛：本机实测 nnz 一万八时 PDLP 还慢 2.5 倍，九万六时已经反超 2.8 倍——交叉点落在 $2\times10^4 \sim 10^5$ 之间（本章只采了 18k 和 96k 两个点，没细扫）。到 $10^6\sim10^7$ 才是一阶方法的主场。显存估算：CSC 存储每个非零约 `int32 索引 + double 值 = 12 B`，$10^8$ 个非零就是 1.2 GB——还要留出向量和多份副本的空间。
 
 **2）精度要求是多少？** 1e-4 的目标值精度够用（看趋势、做近似决策、给 MIP 提供初始解）→ 适合。要 1e-9、要做灵敏度分析、要给下游当热启动 → 不适合，得 crossover 或者干脆用内点法。
 
@@ -494,7 +496,7 @@ m.getParam("<参数名>")          # 再读回来：会不会被夹到区间端�
 **6）怎么测才不算自欺欺人？** 没有下面这套协议，测出来的"加速比"基本不能信：
 
 - 同一个模型文件、同一台机器、同一组容差；否则比的是参数不是算法；
-- 至少跑 3 次取最小值（本章的表就是这么来的；不同轮次之间 ±10%~30% 的抖动很正常，`xlarge` 上甚至能差出一个"触时限"）；
+- 小实例至少跑 3 次取最小值（本章的 small / medium 是这么做的；large / xlarge 单次就要几十秒到两分钟，本章各只跑了 1 次，所以那两行只能看数量级）；不同轮次之间 ±10%~30% 的抖动很正常，`xlarge` 上甚至能差出一个"触时限"；
 - **同时记录迭代次数和不可行度**，不能只记时间：PDLP 少迭代两次就"更快"，但解可能是废的；
 - 精度要对齐再比时间：拿 PDLP 的 1e-4 解去比内点法的 1e-9 解，等于换了个问题；
 - 单卡 vs 单核、GPU vs CPU 要说清楚；本章的 CPU 数字是 8 核机器上的单进程结果。
@@ -513,7 +515,7 @@ m.getParam("<参数名>")          # 再读回来：会不会被夹到区间端�
 
 **4）容差放过头，状态会变成"未证最优"。** `pdlp_optimality_tolerance=1e-4` 且 `kkt_tolerance` 默认时，HiGHS 返回 `kUnknown`。下游只判断 `kOptimal` 的代码会在这一步走进 else 分支。
 
-**5）`passModel` 失败不抛异常，模型会静默变空。** 写这章时踩到的：给 `HighsLp` 设 `a_matrix_.format_ = kColwise`，却把 csr 矩阵的 `indptr/indices` 塞进去，`passModel` 返回 `kError`，随后所有求解都返回 `kModelEmpty`、目标值 0——**没有任何报错**。本章所有 `passModel` 调用都检查了返回值。这和第 9 章 §9.2 那些"API 语义和你以为的不一样"是同一类问题。
+**5）`passModel` 失败不抛异常，模型会静默变空。** 写这章时踩到的：给 `HighsLp` 设 `a_matrix_.format_ = kColwise`，却把 csr 矩阵的 `indptr/indices` 塞进去，`passModel` 返回 `kError`，随后所有求解都返回 `kModelEmpty`、目标值 0——**没有任何报错**。本章所有 `passModel` 调用都检查了返回值。这和第 9 章 9.2 节那些"API 语义和你以为的不一样"是同一类问题。
 
 **6）PDLP 说 "Optimal" 不等于解满足 KKT。** 12.3.4 的真实日志里，HiGHS 复核发现相对原始不可行度 4.24e-07，是容差 1e-07 的 4.24 倍，最后按"容差内可接受"放行。要用这个解做敏感分析前，先看 `HighsInfo` 里的 `max_relative_primal_infeasibility` 这些字段。
 
@@ -549,13 +551,12 @@ python code/ch12_gpu/pdlp_copt.py
 python code/ch12_gpu/pdlp_gurobi.py --check-params
 ```
 
-结果写在 `code/ch12_gpu/output/`（`bench.tsv` / `bench_sweep.tsv` / 各家日志）；用 Tab 分隔而不是 CSV，是为了躲开某些终端安全软件对 `.csv` 的加密。该目录已在 `.gitignore` 里（`code/**/output/`），不进版本库——**跑完不要把 output/ 加进 git**，里面有 1 MB 级的 `.mps` 和一堆日志。
+结果写在 `code/ch12_gpu/output/`（`bench.tsv` / `bench_sweep.tsv` / 各家日志）。注意 **`bench.tsv` 每次运行都会覆盖**，只保留最后一次跑的那些规模——想复现 12.3.2 的完整 12 行就一次性跑全量；用 Tab 分隔而不是 CSV，是为了躲开某些终端安全软件对 `.csv` 的加密。该目录已在 `.gitignore` 里（`code/**/output/`），不进版本库——**跑完不要把 output/ 加进 git**，里面有 1 MB 级的 `.mps` 和一堆日志。
 
 ## 参考资料
 
 - Applegate, Díaz, Lu, Lubin, Mirrokni, Sun, Teo, Wang, Wang: *Practical Large-Scale Linear Programming using Primal-Dual Hybrid Gradient*, [arXiv:2106.04756](https://arxiv.org/abs/2106.04756)（PDLP 原始论文）
 - Lu, Yang, Hu, Huangfu, Liu, Liu, Ye, Zhang, Ge: *cuPDLP-C: A Strengthened Implementation of cuPDLP for Linear Programming by C language*, [arXiv:2312.14832](https://arxiv.org/abs/2312.14832)
-- [cuPDLP-C 仓库（COPT-Public/cuPDLP-C）](https://github.com/COPT-Public/cuPDLP-C)
 - [cuPDLP-C 仓库（COPT-Public/cuPDLP-C）](https://github.com/COPT-Public/cuPDLP-C)（编译前提引自它的 `README.md` / `INSTALL` / `VALIDATION.md`：CMake ≥ 3.24、内置 HiGHS 1.6.0、实测 CUDA 12.8.93 + RTX 4090）
 - [HiGHS GPU 加速文档](https://github.com/ERGO-Code/HiGHS/blob/latest/docs/src/guide/gpu.md)（PDLP 警告、编译期决定设备、GPU build 不能回退 CPU、`kkt_tolerance` 建议都出自这里）
 - [HiGHS 文档首页](https://ergo-code.github.io/HiGHS/)

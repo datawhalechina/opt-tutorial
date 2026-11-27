@@ -36,7 +36,7 @@ def build_distance(coord):
 
 
 def build_model(binary):
-    """同一个 CVRP 模型，binary=False 时只要 LP 松弛。返回 (model, x, y)。"""
+    """同一个 CVRP 模型，binary=False 时只要 LP 松弛。返回 (model, x, u)。"""
     data = CVRP
     demand, capacity = data["demand"], data["capacity"]
     nodes = range(len(demand))
@@ -118,7 +118,7 @@ class MipRecorder:
             )
 
 
-def solve_mip_old_style(x_vars):
+def solve_mip_old_style():
     """旧写法：setCallback(五参函数, user_data)。1.16 里它只是注册“转发器”，还得先 startCallback。"""
     model, x, _ = build_model(binary=True)
     hits = {"n": 0}
@@ -152,7 +152,7 @@ def main():
     print(f"[HiGHS] 根 LP 松弛界       = {lp_obj:.6g}")
     print(f"[HiGHS] LP 解里的分数弧    = {len(fractional)} 条")
 
-    old_obj, old_hits = solve_mip_old_style(None)
+    old_obj, old_hits = solve_mip_old_style()
     mip_obj, solution, recorder, nodes = solve_mip_new_style()
 
     print(f"[HiGHS] 旧写法 setCallback 触发 = {old_hits} 次（结果是 {old_obj:.6g}）")

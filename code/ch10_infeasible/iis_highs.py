@@ -1,6 +1,7 @@
 """第十章 不可行模型排查 —— HiGHS 的 IIS（开源，免授权）。
 
-HiGHS 1.16 起有 IIS 接口，但有两个坑：
+HiGHS 1.8 起有 getIis()；本章用到的 iis_strategy / row_status_ / writeIisModel
+是 1.15 才补齐的。有两个坑：
 1. getIis() 返回的是**二元组** (HighsStatus, HighsIis)，不是单个对象；
 2. 默认的 "light" 策略对纯约束型冲突可能返回**空 IIS**（rows=0），
    必须显式把 iis_strategy 设成 kIisStrategyIrreducible 才能拿到真正的冲突集。

@@ -1,6 +1,8 @@
 # ---- 开源求解器与建模层：无需许可证，CI 只跑这几个 ----
-highspy>=1.16          # HiGHS 官方 Python 接口（addVariable 代数式 API、getIis 需要 1.16+）
-pyscipopt>=5.0         # SCIP 官方 Python 接口（开源，SCIP 8.0.3 起 Apache 2.0）
+highspy>=1.16          # HiGHS 官方 Python 接口；第 10 章的 iis_strategy/writeIisModel 需要 1.15+
+numpy>=1.24            # ch12 生成稀疏 LP 用
+pyscipopt>=6.0         # SCIP 官方 Python 接口（generateIIS 从 6.0 起提供；SCIP 8.0.3 起 Apache 2.0）
+scipy>=1.10            # ch12 的 gen_lp.py 用 scipy.sparse 生成稀疏矩阵
 pulp>=3.0,<4           # 建模层；4.x 是重写版（LpVariable/LpStatus/CBC 全变了），本仓库按 3.x
 pyomo>=6.7             # 建模层，后端通过 SolverFactory 切换
 

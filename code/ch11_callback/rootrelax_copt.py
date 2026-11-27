@@ -197,7 +197,11 @@ def main():
     else:
         cb_relax_obj = sum(dist[a] * cb.relax_vec[k] for k, a in enumerate(arcs))
     # MIPSOL 里的 BestObj 是"当前最好界"，不是这个解的目标值；目标值要按解自己算
-    cand_obj = sum(dist[a] * cb.mip_vec[k] for k, a in enumerate(arcs))
+    cand_obj = (
+        sum(dist[a] * cb.mip_vec[k] for k, a in enumerate(arcs))
+        if cb.mip_vec is not None
+        else float("nan")          # 这个模型上 MIPSOL 没触发过
+    )
 
     print(f"[COPT] 回调触发次数        = {counts}")
     print(f"[COPT] 回调拿到的松弛界    = {cb.relax_obj}")

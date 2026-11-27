@@ -4,7 +4,7 @@
 
 * `LpMethod = 6` 就是"First-order method (PDLP)"。COPT 官方参数文档
   https://guide.coap.online/copt/en-doc/parameter.html 原文列出
-  `-1/1/2/3/4/5/6` 六个取值，6 是 PDLP；本机 8.0.1 实测日志也打印
+  `-1/1/2/3/4/5/6` 七个取值，6 是 PDLP；本机 8.0.1 实测日志也打印
   "Starting PDLP solver using CPU"。
 * `GPUMode`：-1 自动、0 强制 CPU、1 标准 GPU、2 高性能 GPU（barrier 专用）。
   官方文档明确写："On platforms such as macOS, only the CPU version of COPT is

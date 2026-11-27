@@ -1,6 +1,10 @@
-"""第十章 不可行模型排查 —— HiGHS 手工建"弹性模型"（可行性松弛）。
+"""第十章 不可行模型排查 —— HiGHS 的可行性松弛（内置接口 + 手工弹性模型）。
 
-HiGHS / SCIP / PuLP 都没有现成的 feasRelax，那就自己动手：
+先说结论：HiGHS 1.15 起**有**内置的可行性松弛 `feasibilityRelaxation(...)`，
+本脚本先跑它，再手工搭一遍弹性模型——手工版适用于 SCIP / PuLP 这类没有内置接口的
+求解器，也能让你看清内置接口到底在最小化什么。
+
+手工弹性模型的做法（对每条约束一行）：
 把每条约束改成"允许违反一点点"，让求解器去买单。
 
 做法（对每条约束一行）：
@@ -114,12 +118,28 @@ def solve_and_report(weights, title, write_lp=False):
     return model
 
 
+def solve_builtin():
+    """HiGHS 1.15+ 的内置可行性松弛：一次调用，结果在 getSolution() 里。"""
+    model = build_plain()
+    model.run()
+    status = model.feasibilityRelaxation(1.0, 1.0, 1.0)   # 变量下界/上界/约束 RHS 的全局惩罚
+    values = model.getSolution().col_value
+    print("\n【内置】feasibilityRelaxation(1, 1, 1)")
+    print(f"  返回 {status}，加权违反量（目标值）= {model.getObjectiveValue():g}")
+    print(f"  解：a = {values[0]:g}，b = {values[1]:g}"
+          f"  → 改的是 order_A(5) 与 cap_B(3)，和 COPT FeasRelaxMode=0 同一组")
+    return model
+
+
 def main():
     OUT.mkdir(exist_ok=True)
 
     original = build_plain()
     original.run()
     print(f"原模型状态：{original.modelStatusToString(original.getModelStatus())}")
+
+    # 先看内置接口：一行调用，总违反量 8，修复集与 COPT 一致
+    solve_builtin()
 
     # 等权：认为改产能和改订单一样贵 → 挑违反量最小的组合
     solve_and_report({}, "等权（所有约束惩罚都是 1）", write_lp=True)

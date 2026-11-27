@@ -172,4 +172,6 @@ if __name__ == "__main__":
     try:
         main()
     except gp.GurobiError as exc:
-        raise SystemExit(f"需要有效的 Gurobi license：{exc}") from exc
+        # 没有许可证不是错误：打印提示后正常退出（verify_all 会记为「跳过」）
+        print(f"跳过：需要有效的 Gurobi license（{exc}）")
+        sys.exit(0)

@@ -5,7 +5,7 @@
        Model.computeIIS(callback=None, wheres=None)
        Model.feasRelaxS(relaxobjtype, minrelax, vrelax, crelax)
    relaxobjtype：0 = 违反量之和（L1），1 = 违反量平方和（L2），2 = 违反条数（L0）。
-   注意别照抄旧教程：Gurobi 12 之前 relaxobjtype=1 才是"条数"，现在编号变了。
+   这个编号长期没变（Gurobi 10/11/12/14 文档一致），以本机 docstring 为准即可。
 
 Gurobi 的两条主线：
 1. computeIIS() 之后 write("x.ilp") 落地，或读 IISConstr / IISLB / IISUB 属性；
@@ -119,4 +119,6 @@ if __name__ == "__main__":
     try:
         main()
     except gp.GurobiError as exc:
-        raise SystemExit(f"跳过：本机没有可用的 Gurobi 许可证（{exc}）") from exc
+        # 没有许可证不是错误，打印提示后正常退出（verify_all 也会记为「跳过」）
+        print(f"跳过：本机没有可用的 Gurobi 许可证（{exc}）")
+        sys.exit(0)

@@ -78,7 +78,10 @@ code/
 ├── ch05_formats/            # 文件读写：formats_{gurobi,copt,highs}.py
 ├── ch06_logging/            # 日志生成：log_{gurobi,copt,highs}.py
 ├── ch07_cvrp/               # 车辆路径：cvrp_{gurobi,copt,highs,scip}.py
-└── ch08_modeling/           # 建模层：pulp_{lp,milp}.py、pyomo_{lp,milp}.py
+├── ch08_modeling/           # 建模层：pulp_{lp,milp}.py、pyomo_{lp,milp}.py
+├── ch10_infeasible/         # 不可行排查：iis_{copt,highs,scip}.py、feasrelax_{copt,highs,gurobi,varbounds}.py
+├── ch11_callback/           # 回调：rootrelax_{copt,highs,scip,gurobi}.py、lazycuts_{copt,gurobi}.py
+└── ch12_gpu/                # 一阶方法：bench_pdlp_highs.py、gen_lp.py、pdlp_{copt,gurobi,cupdlp}.py
 scripts/verify_all.py        # 一键校验
 ```
 

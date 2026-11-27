@@ -6,7 +6,7 @@
   - 常用事件：FIRSTLPSOLVED / LPSOLVED / NODEFOCUSED / BESTSOLFOUND / NODESOLVED
   - 事件对象只给 event.getNode()，没有 getSol()；解要用 model.getBestSol()
 两个坑（本章实测）：
-  - 预处理阶段也会触发 FIRSTLPSOLVED，此时读 LP 会打 ERROR、严重时直接段错误 → 先判 getStage()
+  - 预处理阶段触发的事件（BESTSOLFOUND 等）里读 LP 会打 ERROR 并返回无意义的值 → 先判 getStage()
   - model.getLPObjVal() 返回的是**缩放后**的目标值（SCIP 按目标系数的小数位放大）
 运行：python code/ch11_callback/rootrelax_scip.py
 """
@@ -162,6 +162,9 @@ def main():
     print(f"[SCIP] 事件触发次数        = {watcher.counts}")
     print(f"[SCIP] 预处理阶段被跳过的事件 = {watcher.presolv_hits} 次")
 
+    if watcher.root_lp is None:            # 该模型上 FIRSTLPSOLVED 一次都没触发
+        print("[SCIP] 这个模型没有触发 FIRSTLPSOLVED，拿不到 LP 松弛解")
+        return
     scaled, own_obj, nfrac, _dual = watcher.root_lp
     factor = round(scaled / own_obj)
     print(f"[SCIP] 回调里的 LP 目标值   = {scaled:.6g}（缩放后）")
