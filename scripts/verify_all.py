@@ -89,6 +89,7 @@ SMOKE = {
     "ch06_logging/HiGHS": "code/ch06_logging/log_highs.py",
     "ch10_infeasible/COPT": "code/ch10_infeasible/iis_copt.py",
     "ch10_infeasible/COPT-relax": "code/ch10_infeasible/feasrelax_copt.py",
+    "ch10_infeasible/COPT-varbound": "code/ch10_infeasible/feasrelax_varbounds.py",
     "ch10_infeasible/Gurobi": "code/ch10_infeasible/feasrelax_gurobi.py",
     "ch10_infeasible/HiGHS": "code/ch10_infeasible/iis_highs.py",
     "ch10_infeasible/SCIP": "code/ch10_infeasible/iis_scip.py",
